@@ -1,0 +1,20 @@
+# a pod is said to be immutable when the privileged is false and readOnlyRootFilesystem is enabled under the cotainer spec.
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: test-pod
+  name: test-pod
+  namespace: test-ns
+spec:
+  containers:
+  - image: nginx
+    name: test-pod
+    resources: {}
+    securityContext:
+      privileged: false
+      readOnlyRootFilesystem: true
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+status: {}
