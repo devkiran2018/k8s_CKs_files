@@ -1,0 +1,88 @@
+CKS:
+-> to get pod names and images used by containers in those pods use :
+->k get pods -n kube-system -o custom-columns='pod:.metadata.name,image:.spec.containers[*].image'
+->kubectl annotate pods my-pod key=value
+->k set serviceaccount pod pod-name sa-name
+->kubectl set serviceaccount deployment nginx-deployment serviceaccount1
+
+---decode a username or passowrd stored in a secret ---
+->k get secret -n test-ns -o yaml | grep -A5 data:
+->echo 'encoded username or password' |base64 -d |tee -a /filepath/finenameToStore.
+
+---create and verify the network policy---
+-> create a network policy form documentation and apply it.
+-> if not sure about the configured policy, use describe command to read it in plain english. check the from and to sections, this gives you more clarity.
+-> k describe netpol -n test-ns netpol-name
+---serviceaccount---
+->k get serviceaccount(sa) -n test-ns 
+->k set serviceaccount -n test-ns for-pod pod-name sa-name.
+---> ServiceAccounts must not automount API credentials means
+  -> under pod spec use : automountServiceAccountToken: fasle
+---RuntimeClass for sandboxed environment---
+-> configure a RuntimeClass object by looking at the documentation.
+  apply the RuntimeClass object.
+  -> configure pod or deplopyment objects under pod spec to use the RuntimeClass
+  -> using runtimeClassName: test-name
+
+----RBAC-role&role binding, Clusterrole & clsuter rolebinding---
+   -> k edit role -n test-ns test-role, to provide appropriate permissions
+      as required.
+   -> k create rolebinding -role-bind-name -n test-ns --role=test-role --serviceaccount=default:test-sa-name
+---Search the documentation for Audit log or Audit policy for example--
+--- images with --severity= CRITICAL vulnerabilities ----
+use trivy to scan the images,
+for this fiest get the images from pods or deployment objects using the below
+
+-> k get pods -n kube-system -o custom-columns='pod:.metadata.name,image:.spec.containers[*].image'
+-> above command give the list of pods and corresponding images in table format for reference and then use below command for every image scanning.
+->$ trivy image --severity CRITICAL test-image-name-to-scan.
+-> k delete pod-name -n test-ns $now  ->(now= --force --grace-period=0)
+
+----search documentation for apparmor ---
+-> apparmor_parser --help
+-> apparmor_parser -q /path-to-profile-file
+-> aa-status | grep profile-name  -> loaded or not.
+configure the pods or deployment to use the loaded profile by configuring the annotations in the metadata space.
+->container.apparmor.security.beta.kubernetes.io/<container-name>: localhost/profile-name
+----search documentation for -> cli kube-apiserver -> for all cli arguments.
+---- use falco documentation ----
+-> journalctl -fu falco
+-> gives the log output.
+-> grep -ir 'search-string' /etc/falco/  -> give the paths that matches the search string.
+-> copy the rule form main rule file to falco_rule.local.yaml file and configure as required.
+-> use -> falco --list | grep -i 'search-string'  for all the relevant fileds.
+-> once done, do hot relaod (kill -1 $(cat /var/run/falco-pid)) or 
+   systemctl restart falco.service
+
+-> sysdig --list | grep time , and repate for all other parametrs.
+-> sysdig --list | grep k8s
+-> sysdig --help | grep '-p'
+
+--- image-policy-webhook- to know allow lastest image to be used---
+allow only registered Image repositories through image policy webhook plugins and other admission configuration plugins like:
+- --admission-control-config-file
+- --enable-admission-plugins=ImagePolicyWebhook
+both the above arguments needs to configured in kube-apserevr maifest file.
+-> verify by creating a test pod with latest image -> which gives error.
+-> verify by creating pod with image tag, result should be ok.
+
+
+https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#securitycontext-v1-core
+privileged
+boolean	Run container in privileged mode. Processes in privileged containers are essentially equivalent to root on the host. Defaults to false. Note that this field cannot be set when spec.os.name is windows.
+
+readOnlyRootFilesystem
+boolean	Whether this container has a read-only root filesystem. Default is false. Note that this field cannot be set when spec.os.name is windows.
+---considered as an immutable pod, if the pods are running with readonlyRootFilesystem and do not use elevated privileges.
+
+---immutability-of-containers-at-runtime---
+spec:
+  securityContext:
+    runAsUser: 10xxx
+  containers:
+  - image: nginx
+    name: test-1
+    securityContext:
+      readOnlyRootFilesystem: true
+      privileged: false
+	 
