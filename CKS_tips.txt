@@ -1,3 +1,5 @@
+
+
 CKS:
 -> to get pod names and images used by containers in those pods use :
 ->k get pods -n kube-system -o custom-columns='pod:.metadata.name,image:.spec.containers[*].image'
